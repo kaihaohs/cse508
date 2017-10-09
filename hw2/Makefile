@@ -1,28 +1,36 @@
-CC = gcc
-CFLAGS = -Wall -Werror -DCOLOR
-BIN = mydump
-LIBS = -lpcap
-SRC = $(wildcard *.c)
+CC := gcc
+SRCD := src
+BLDD := build
+BIND := bin
+INCD := include
 
-.PHONY: all debug clean help check
+ALL_SRCF := $(shell find $(SRCD) -type f -name *.c)
+ALL_OBJF := $(patsubst $(SRCD)/%,$(BLDD)/%,$(ALL_SRCF:.c=.o))
+INC := -I $(INCD)
 
-# .DEFAULT_GOAL := help
+LIBS := -lpcap
+EXEC := mydump
 
-all: $(BIN) ## Generates all programs that this makefile can generate.
+
+.PHONY: all debug clean setup
+
+CFLAGS := 
+#-Wall -Werror
+DFLAGS := -g -DDEBUG -DCOLOR
+
+all: setup $(EXEC) 
 
 debug: CFLAGS += -g -DDEBUG
-debug: $(BIN) ## Generates a binary with debugging symbols and debug print statements.
+debug: all
 
-mydump: $(SRC) ## Generates the mydump program.
-	$(CC) $(CFLAGS) $^ -o $@ $(LIBS)
+setup:
+	mkdir -p bin build
 
-clean: ## Removes all source binaries and object files.
-	rm -f $(BIN) *.o
+$(EXEC): $(ALL_OBJF)
+	$(CC) $(CFLAGS) $(STD) $^ -o $(BIND)/$@ $(LIBS)
 
-help: ## Generates this help menu.
-	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
+$(BLDD)/%.o: $(SRCD)/%.c
+	$(CC) $(CFLAGS) $(INC) -c -o $@ $<
 
-BADFUNCS='[^_.>a-zA-Z0-9](str(n?cpy|n?cat|xfrm|n?dup|str|pbrk|tok|_)|stpn?cpy|a?sn?printf|byte_)'
-check: ## Checks program for bad functions.
-	@echo Files with potentially dangerous functions.
-	@egrep -Hn $(BADFUNCS) $(SRC) || true
+clean: 
+	rm -rf $(BLDD) $(BIND)

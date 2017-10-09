@@ -8,7 +8,6 @@
 #include <signal.h>
 
 #include <pcap/pcap.h>
-//#include <pcap.h>
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <arpa/inet.h>
