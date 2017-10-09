@@ -21,7 +21,7 @@
 
 #include "mydump.h"
 #include "debug.h"
-
+/*
 static void sniffinterface(pcap_t *handle, char *searchstring);
 static bool interfaceexists(const char *interface);
 static void callback(u_char *args, const struct pcap_pkthdr* pkthdr, const u_char* packet);
@@ -32,11 +32,11 @@ static void printtcp(const u_char* packet, size_t length);
 static void printicmp(const u_char* packet, size_t length);
 static void printother(const u_char* packet, size_t length);
 static void printpayload(const u_char* packet, size_t length);
-static bool searchpacket(const u_char *packet, size_t length, char *search);
+static bool searchpacket(const u_char *packet, size_t length, char *search);*/
 
 // static p
 
-static pcap_t *handle = NULL;
+//static pcap_t *handle = NULL;
 
 void exithandler(int dummy) {
     if (handle != NULL) {
@@ -45,39 +45,9 @@ void exithandler(int dummy) {
 }
 
 int main(int argc, char *argv[]) {
-    int opt;
-    char *expression = NULL;
-    char *interface = NULL;
-    char *inputfile = NULL;
-    char *searchstring = NULL;
-
-    // Iterate through the command line arguments
-    while ((opt = getopt(argc, argv, "hi:r:s:")) != -1) {
-        switch (opt) {
-            case 'i':
-                interface = optarg;
-                break;
-            case 'r':
-                inputfile = optarg;
-                break;
-            case 's':
-                searchstring = optarg;
-                break;
-            case 'h':
-                USAGE(argv[0], stdout, EXIT_SUCCESS);
-                break;
-            default: /* '?' */
-                USAGE(argv[0], stderr, EXIT_FAILURE);
-                break;
-        }
-    }
-
-    // Check to make sure an interface and a file were not provided.
-    if (interface != NULL && inputfile != NULL) {
-        fprintf(stderr, "You cannot provide both an interface and an input file.\n");
-        USAGE(argv[0], stderr, EXIT_FAILURE);
-    }
-
+    // 1 Parse Argument
+    parse_args(argc, argv);
+/*
     // Make sure if a bpf filter was provided, we only have one
     if (optind < argc && (argc - optind) == 1) {
         expression = argv[optind];
@@ -95,8 +65,8 @@ int main(int argc, char *argv[]) {
 
     // Set up to capture
     char errbuf[PCAP_ERRBUF_SIZE];
-    bpf_u_int32 mask = 0;   /* The netmask of our sniffing device */
-    bpf_u_int32 net = 0;    /* The IP of our sniffing device */
+    bpf_u_int32 mask = 0;   /* The netmask of our sniffing device *
+    bpf_u_int32 net = 0;    /* The IP of our sniffing device *
     struct bpf_program filter;
     // Zero out the struct
     memset(&filter, 0, sizeof(struct bpf_program));
@@ -162,7 +132,7 @@ int main(int argc, char *argv[]) {
     } else {
         info("Ending listening session on %s...\n", interface);
     }
-    pcap_close(handle);
+    pcap_close(handle);*/
 
     return EXIT_SUCCESS;
 }

@@ -7,6 +7,16 @@
 #define TYPE_TCP 6
 #define TYPE_UDP 17
 
+typedef struct
+{
+    char *expression;
+    char *interface;
+    char *inputfile;
+    char *searchstring;
+} state_t;
+
+extern state_t *program_state;
+
 #define USAGE(name, stream, exit_code) do {                                    \
     fprintf((stream),                                                          \
     "%s [-h] [-i interface] [-r file] [-s string] [expression]"                \
