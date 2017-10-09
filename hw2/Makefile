@@ -25,11 +25,13 @@ debug: all
 setup:
 	mkdir -p bin build
 
-$(EXEC): $(ALL_OBJF)
-	$(CC) $(CFLAGS) $(STD) $^ -o $(BIND)/$@ $(LIBS)
-
 $(BLDD)/%.o: $(SRCD)/%.c
 	$(CC) $(CFLAGS) $(INC) -c -o $@ $<
+
+$(EXEC): $(ALL_OBJF)
+	$(CC) $(CFLAGS) $^ -o $(BIND)/$@ $(LIBS)
+
+
 
 clean: 
 	rm -rf $(BLDD) $(BIND)

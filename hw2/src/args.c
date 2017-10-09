@@ -3,34 +3,14 @@
 #include <string.h>
 #include <unistd.h>
 #include "mydump.h"
+#include "debug.h"
 
-void*
-Malloc(size_t size)
-{
-    void* ret;
-    if ((ret = malloc(size)) == NULL) {
-        perror("Out of Memory");
-        exit(EXIT_FAILURE);
-    }
-    return ret;
-}
-
-void*
-Calloc(size_t nmemb, size_t size)
-{
-    void* ret;
-    if ((ret = calloc(nmemb, size)) == NULL) {
-        perror("Out of Memory");
-        exit(EXIT_FAILURE);
-    }
-    return ret;
-}
+void* Calloc(size_t nmemb, size_t size);
 
 state_t *program_state;
 
 // Parse Argument - Main
-void
-parse_args(int argc, char *argv[])
+void parse_args(int argc, char *argv[])
 {
     char opt;
     program_state = Calloc(1, sizeof(state_t));
@@ -38,52 +18,46 @@ parse_args(int argc, char *argv[])
     while ((opt = getopt(argc, argv, "hi:r:s:")) != -1) {
         switch (opt) {
             case 'i':
-                program_state.interface = optarg;
+                program_state -> interface = optarg;
                 break;
             case 'r':
-                program_state.inputfile = optarg;
+                program_state -> inputfile = optarg;
                 break;
             case 's':
-                program_state.searchstring = optarg;
+                program_state -> searchstring = optarg;
                 break;
             case 'h':
                 USAGE(argv[0], stdout, EXIT_SUCCESS);
                 break;
-            default: /* '?' */
+            default:
                 USAGE(argv[0], stderr, EXIT_FAILURE);
                 break;
         }
     }
-    
-    // Check
-    if (program_state.interface != NULL && program_state.inputfile != NULL) {
-        fprintf(stderr, "You cannot provide both an interface and an input file.\n");
+
+    if (program_state -> interface != NULL && program_state -> inputfile != NULL) {
+        error("Interface and input file are provided at the same time!\n");
+        USAGE(argv[0], stderr, EXIT_FAILURE);
+    }
+
+    if ( optind == argc - 1) {
+        program_state -> expression = argv[optind];
+    } else if (optind != argc) {
+        error("Too many expression are provided!\n");
         USAGE(argv[0], stderr, EXIT_FAILURE);
     }
     
+    debug("Search String: %s\n", program_state -> searchstring);
+    debug("BPF Expression: %s\n", program_state -> expression);
 }
+
 
     
 /*
-    // Make sure if a bpf filter was provided, we only have one
-    if (optind < argc && (argc - optind) == 1) {
-        expression = argv[optind];
-    } else if (optind == argc && (argc - optind) == 0) {
-        // NOP
-    } else {
-        error("Too many positional arguments provided.\n");
-        error("Expected 1 BPF filter but found %d positional arguments.\n", argc - optind);
-        return EXIT_FAILURE;
-    }
-
-    // Do some basic logging for debug
-    debug("Search String: %s\n", searchstring);
-    debug("BPF Expression: %s\n", expression);
-
     // Set up to capture
     char errbuf[PCAP_ERRBUF_SIZE];
-    bpf_u_int32 mask = 0;   /* The netmask of our sniffing device *
-    bpf_u_int32 net = 0;    /* The IP of our sniffing device *
+    bpf_u_int32 mask = 0;    The netmask of our sniffing device *
+    bpf_u_int32 net = 0;     The IP of our sniffing device *
     struct bpf_program filter;
     // Zero out the struct
     memset(&filter, 0, sizeof(struct bpf_program));
