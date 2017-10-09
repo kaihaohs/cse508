@@ -14,9 +14,8 @@ EXEC := mydump
 
 .PHONY: all debug clean setup
 
-CFLAGS := 
-#-Wall -Werror
-DFLAGS := -g -DDEBUG -DCOLOR
+CFLAGS := -Wall -Werror -DCOLOR
+DFLAGS := -g -DDEBUG 
 
 all: setup $(EXEC) 
 
