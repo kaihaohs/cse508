@@ -6,9 +6,10 @@
 #include <ifaddrs.h>
 #include <time.h>
 #include <signal.h>
-/*
+
 #include <pcap/pcap.h>
-#include <sys/socket.h>
+#include <linux/if.h>
+/*#include <sys/socket.h>
 #include <sys/types.h>
 #include <arpa/inet.h>
 #include <net/ethernet.h>
@@ -17,7 +18,7 @@
 #include <netinet/tcp.h>
 #include <netinet/ip.h>
 #include <netinet/in.h>
-#include <linux/if.h>*/
+*/
 
 #include "mydump.h"
 #include "debug.h"
@@ -36,7 +37,8 @@ static bool searchpacket(const u_char *packet, size_t length, char *search);*/
 
 // static p
 
-//static pcap_t *handle = NULL;
+static pcap_t *handle = NULL;
+
 /*
 void exithandler(int dummy) {
     if (handle != NULL) {
@@ -44,10 +46,66 @@ void exithandler(int dummy) {
     }
 }*/
 
+static void callback(u_char *args, const struct pcap_pkthdr* pkthdr, const u_char* packet) {
+    /*if (args != NULL) {
+        if (!searchpacket(packet, pkthdr->len, (char*)args)) {
+            return;
+        }
+    }*/
+    // source and destination IP
+    // address and port, protocol (TCP, UDP, ICMP, OTHER), and the raw content of the
+    // application-layer packet payload
+    // Extract the time stamp
+    char buffer[128];
+    time_t ts = pkthdr->ts.tv_sec;
+    strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M:%S%P", localtime(&ts));
+    printf("%s ", buffer);
+    /*
+    // Check to see if we have a ipv4 packet
+    struct ethhdr *ehdr = (struct ethhdr *)packet;
+    if (ntohs(ehdr->h_proto) == IPV4) {
+        struct iphdr *iph = (struct iphdr*)(packet + sizeof(struct ethhdr));
+        // Figure out protocol sensitive information
+        switch (iph->protocol) {
+            case TYPE_ICMP:
+                printicmp(packet, pkthdr->caplen);
+                break;
+            case TYPE_UDP:
+                printudp(packet, pkthdr->caplen);
+                break;
+            case TYPE_TCP:
+                printtcp(packet, pkthdr->caplen);
+                break;
+            default:
+                printother(packet, pkthdr->caplen);
+                break;
+        }
+    } else {
+        // We have something else like arp, etc.
+        printeth(packet, pkthdr->caplen);
+        // Print a OTHER and a newline
+        printf("OTHER\n");
+        // Print whatever is left
+        printpayload(packet + sizeof(struct ethhdr), pkthdr->caplen - sizeof(struct ethhdr));
+    }*/
+    // Make a gap for the next packet
+    printf("\n");
+}
+
 int main(int argc, char *argv[]) {
     // 1 Parse Argument -> program_state
     parse_args(argc, argv);
     
+    // 2
+    char errbuf[PCAP_ERRBUF_SIZE];
+    
+    if(program_state -> inputfile){
+        if ((handle = pcap_open_offline(program_state -> inputfile, errbuf)) == NULL) {
+            error("Unable to read the offline dump file %s", inputfile);
+            return EXIT_FAILURE;
+        }
+    }
+    pcap_loop(handle, -1, callback, (u_char*)program_state -> searchstring);
     free(program_state);
     return EXIT_SUCCESS;
 }
@@ -160,51 +218,7 @@ static bool interfaceexists(const char *interface) {
     return exists;
 }
 
-static void callback(u_char *args, const struct pcap_pkthdr* pkthdr, const u_char* packet) {
-    if (args != NULL) {
-        if (!searchpacket(packet, pkthdr->len, (char*)args)) {
-            // Didn't find the search string, exit
-            return;
-        }
-    }
-    // source and destination IP
-    // address and port, protocol (TCP, UDP, ICMP, OTHER), and the raw content of the
-    // application-layer packet payload
-    // Extract the time stamp
-    char buffer[256];
-    time_t ts = pkthdr->ts.tv_sec;
-    strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M:%S%P", localtime(&ts));
-    printf("%s ", buffer);
-    // Check to see if we have a ipv4 packet
-    struct ethhdr *ehdr = (struct ethhdr *)packet;
-    if (ntohs(ehdr->h_proto) == IPV4) {
-        struct iphdr *iph = (struct iphdr*)(packet + sizeof(struct ethhdr));
-        // Figure out protocol sensitive information
-        switch (iph->protocol) {
-            case TYPE_ICMP:
-                printicmp(packet, pkthdr->caplen);
-                break;
-            case TYPE_UDP:
-                printudp(packet, pkthdr->caplen);
-                break;
-            case TYPE_TCP:
-                printtcp(packet, pkthdr->caplen);
-                break;
-            default:
-                printother(packet, pkthdr->caplen);
-                break;
-        }
-    } else {
-        // We have something else like arp, etc.
-        printeth(packet, pkthdr->caplen);
-        // Print a OTHER and a newline
-        printf("OTHER\n");
-        // Print whatever is left
-        printpayload(packet + sizeof(struct ethhdr), pkthdr->caplen - sizeof(struct ethhdr));
-    }
-    // Make a gap for the next packet
-    printf("\n");
-}
+
 
 static void printeth(const u_char *packet, size_t length) {
     // source and destination MAC address
