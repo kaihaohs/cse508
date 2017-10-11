@@ -17,8 +17,8 @@ typedef struct
 
 extern state_t *program_state;
 
-void
-parse_args(int argc, char *argv[]);
+void parse_args(int argc, char *argv[]);
+
 #define USAGE(name, stream, exit_code) do {                                    \
     fprintf((stream),                                                          \
     "%s [-h] [-i interface] [-r file] [-s string] [expression]"                \
@@ -48,10 +48,5 @@ parse_args(int argc, char *argv[]);
     , (name));                                                                 \
     exit((exit_code));                                                         \
 } while(0)
-
-#define CHECK_FLAG(value, flag)     \
-({                                  \
-    ((value) & flag) == (flag);     \
-})
 
 #endif
