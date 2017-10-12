@@ -1,0 +1,109 @@
+CSE508: Network Security, Fall 2017
+
+Homework 2: Passive Network Monitoring
+-------------------------------------------------------------------------------
+In this assignment, I separated the homework to three parts.
+
+(1) The first part is about parsing argument.
+ [args.c]
+ - void parse_args(int argc, char *argv[])
+// parse argument and save to state_t struct
+
+(2) The second part is about setting up and filtering
+ [main.c]
+ According to state_t struct, using functions in libpcap library.
+ - pcap_open_offline
+ - pcap_lookupdev
+ - pcap_lookupnet
+ - pcap_open_live
+
+ - pcap_compile
+ - pcap_setfilter
+
+(3) The third part is printing information.
+ [main.c] & [print.c]
+ - pcap_loop(handle, -1, parse_packets, (u_char*)program_state);
+ - static void parse_packets(u_char *args, const struct pcap_pkthdr* pkthdr, const u_char* packet) 
+ 
+-------------------------------------------------------------------------------
+EXAMPLE
+
+1) Input file -> rsrc/hw1.pcap & -s searching string -> jpg
+
+> bin/mydump -r rsrc/hw1.pcap -s jpg
+2013-01-12 22:30:48.908526 c4:3d:c7:17:6f:9b  -> 00:0c:29:e9:94:8e  type 0x800 len 177
+92.240.68.152:3365 -> 192.168.0.200:20480 TCP
+47 45 54 20 68 74 74 70 3a 2f 2f 70 69 63 2e 6c   GET http://pic.l
+65 65 63 68 2e 69 74 2f 69 2f 66 31 36 36 63 2f   eech.it/i/f166c/
+34 37 39 32 34 36 62 30 61 73 74 74 61 73 2e 6a   479246b0asttas.j
+70 67 20 48 54 54 50 2f 31 2e 31 0a 55 73 65 72   pg HTTP/1.1.User
+2d 41 67 65 6e 74 3a 20 77 65 62 63 6f 6c 6c 61   -Agent: webcolla
+67 65 2f 31 2e 31 33 35 61 0a 48 6f 73 74 3a 20   ge/1.135a.Host: 
+70 69 63 2e 6c 65 65 63 68 2e 69 74 0a 0a 00      pic.leech.it...
+
+2) Input Ethernet Interface en0 & BPF filter ump
+> bin/mydump -i en0 udp
+2017-10-12 15:22:29.319358 30:35:ad:c2:de:a4  -> 2c:23:3a:9c:01:44  type 0x800 len 70
+10.1.132.6:31467 -> 10.1.16.16:13568 UDP
+d5 ff 01 00 00 01 00 00 00 00 00 00 06 67 69 74   .............git
+68 75 62 03 63 6f 6d 00 00 01 00 01               hub.com.....
+
+2017-10-12 15:22:29.330529 2c:23:3a:9c:01:44  -> 30:35:ad:c2:de:a4  type 0x800 len 102
+10.1.16.16:13568 -> 10.1.132.6:31467 UDP
+d5 ff 81 80 00 01 00 02 00 00 00 00 06 67 69 74   .............git
+68 75 62 03 63 6f 6d 00 00 01 00 01 c0 0c 00 01   hub.com.........
+00 01 00 00 00 15 00 04 c0 1e fd 70 c0 0c 00 01   ...........p....
+00 01 00 00 00 15 00 04 c0 1e fd 71               ...........q
+
+2017-10-12 15:22:29.747143 30:35:ad:c2:de:a4  -> 2c:23:3a:9c:01:44  type 0x800 len 81
+10.1.132.6:48328 -> 10.1.16.16:13568 UDP
+45 f7 01 00 00 01 00 00 00 00 00 00 0a 61 73 73   E............ass
+65 74 73 2d 63 64 6e 06 67 69 74 68 75 62 03 63   ets-cdn.github.c
+6f 6d 00 00 01 00 01                              om.....
+
+3) Default Interface & seraching string ‘GET’
+> bin/mydump -s GET
+2017-10-12 15:25:20.537451 30:35:ad:c2:de:a4  -> 2c:23:3a:9c:01:44  type 0x800 len 656
+10.1.132.6:49897 -> 13.32.251.235:20480 TCP
+47 45 54 20 2f 20 48 54 54 50 2f 31 2e 31 0d 0a   GET / HTTP/1.1..
+48 6f 73 74 3a 20 77 77 77 2e 67 65 65 6b 73 66   Host: www.geeksf
+6f 72 67 65 65 6b 73 2e 6f 72 67 0d 0a 41 63 63   orgeeks.org..Acc
+65 70 74 3a 20 74 65 78 74 2f 68 74 6d 6c 2c 61   ept: text/html,a
+70 70 6c 69 63 61 74 69 6f 6e 2f 78 68 74 6d 6c   pplication/xhtml
+2b 78 6d 6c 2c 61 70 70 6c 69 63 61 74 69 6f 6e   +xml,application
+2f 78 6d 6c 3b 71 3d 30 2e 39 2c 2a 2f 2a 3b 71   /xml;q=0.9,*/*;q
+3d 30 2e 38 0d 0a 55 70 67 72 61 64 65 2d 49 6e   =0.8..Upgrade-In
+73 65 63 75 72 65 2d 52 65 71 75 65 73 74 73 3a   secure-Requests:
+20 31 0d 0a 43 6f 6f 6b 69 65 3a 20 5f 5f 75 74    1..Cookie: __ut
+6d 61 3d 32 34 35 36 30 35 39 30 36 2e 31 32 35   ma=245605906.125
+30 35 34 33 38 34 32 2e 31 35 30 34 31 38 38 35   0543842.15041885
+32 34 2e 31 35 30 37 32 31 34 37 32 35 2e 31 35   24.1507214725.15
+30 37 37 33 31 34 39 31 2e 34 36 3b 20 5f 5f 75   07731491.46; __u
+74 6d 63 3d 32 34 35 36 30 35 39 30 36 3b 20 5f   tmc=245605906; _
+5f 75 74 6d 7a 3d 32 34 35 36 30 35 39 30 36 2e   _utmz=245605906.
+31 35 30 37 37 33 31 34 39 31 2e 34 36 2e 32 30   1507731491.46.20
+2e 75 74 6d 63 73 72 3d 67 6f 6f 67 6c 65 7c 75   .utmcsr=google|u
+74 6d 63 63 6e 3d 28 6f 72 67 61 6e 69 63 29 7c   tmccn=(organic)|
+75 74 6d 63 6d 64 3d 6f 72 67 61 6e 69 63 7c 75   utmcmd=organic|u
+74 6d 63 74 72 3d 28 6e 6f 74 25 32 30 70 72 6f   tmctr=(not%20pro
+76 69 64 65 64 29 3b 20 5f 67 61 3d 47 41 31 2e   vided); _ga=GA1.
+32 2e 31 32 35 30 35 34 33 38 34 32 2e 31 35 30   2.1250543842.150
+34 31 38 38 35 32 34 0d 0a 55 73 65 72 2d 41 67   4188524..User-Ag
+65 6e 74 3a 20 4d 6f 7a 69 6c 6c 61 2f 35 2e 30   ent: Mozilla/5.0
+20 28 4d 61 63 69 6e 74 6f 73 68 3b 20 49 6e 74    (Macintosh; Int
+65 6c 20 4d 61 63 20 4f 53 20 58 20 31 30 5f 31   el Mac OS X 10_1
+32 5f 36 29 20 41 70 70 6c 65 57 65 62 4b 69 74   2_6) AppleWebKit
+2f 36 30 34 2e 31 2e 33 38 20 28 4b 48 54 4d 4c   /604.1.38 (KHTML
+2c 20 6c 69 6b 65 20 47 65 63 6b 6f 29 20 56 65   , like Gecko) Ve
+72 73 69 6f 6e 2f 31 31 2e 30 20 53 61 66 61 72   rsion/11.0 Safar
+69 2f 36 30 34 2e 31 2e 33 38 0d 0a 41 63 63 65   i/604.1.38..Acce
+70 74 2d 4c 61 6e 67 75 61 67 65 3a 20 7a 68 2d   pt-Language: zh-
+63 6e 0d 0a 41 63 63 65 70 74 2d 45 6e 63 6f 64   cn..Accept-Encod
+69 6e 67 3a 20 67 7a 69 70 2c 20 64 65 66 6c 61   ing: gzip, defla
+74 65 0d 0a 43 6f 6e 6e 65 63 74 69 6f 6e 3a 20   te..Connection: 
+6b 65 65 70 2d 61 6c 69 76 65 0d 0a 0d 0a         keep-alive....
+
+4) Input interface eth4 does not exist
+> bin/mydump -i eth4
+Unable to get the netmask: SIOCGIFADDR: eth4: Device not configured
+Unable to open the device eth4: eth4: No such device exists (BIOCSETIF failed: Device not configured)
