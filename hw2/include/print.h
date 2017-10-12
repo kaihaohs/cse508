@@ -2,6 +2,7 @@
 #define PRINT_H
 #include <stdio.h>
 #include <time.h>
+#include <stdlib.h>
 
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -71,10 +72,12 @@ ece:1, cwr:1;
     uint16_t    urg_ptr;
 };
 
-void print_timestamp(time_t ts);
+void print_timestamp(struct timeval ts);
 void print_eth(const u_char *packet, size_t length);
-void print_tcp(const u_char* packet, size_t length);
-void print_udp(const u_char* packet, size_t length);
-void print_icmp(const u_char* packet, size_t length);
+size_t print_tcp(const u_char* packet, size_t length);
+size_t print_udp(const u_char* packet, size_t length);
+size_t print_icmp(const u_char* packet, size_t length);
+size_t print_other(const u_char* packet, size_t length);
 void print_payload(const u_char* packet, size_t length);
+void print_output(const u_char* packet, size_t length, size_t hdr_len);
 #endif

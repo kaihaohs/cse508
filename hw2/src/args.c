@@ -24,7 +24,7 @@ void parse_args(int argc, char *argv[])
                 program_state -> inputfile = optarg;
                 break;
             case 's':
-                program_state -> searchstring = optarg;
+                program_state -> string = optarg;
                 break;
             case 'h':
                 USAGE(argv[0], stdout, EXIT_SUCCESS);
@@ -47,7 +47,7 @@ void parse_args(int argc, char *argv[])
         USAGE(argv[0], stderr, EXIT_FAILURE);
     }
     
-    debug("Search String: %s\n", program_state -> searchstring);
+    debug("Match String: %s\n", program_state -> string);
     debug("BPF Expression: %s\n", program_state -> expression);
 }
 
