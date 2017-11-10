@@ -18,6 +18,11 @@
 #include <stdlib.h>
 #include <pthread.h>
 
+#include <openssl/aes.h>
+#include <openssl/rand.h>
+#include <openssl/hmac.h>
+#include <openssl/buffer.h>
+
 #define BUF_SIZE 4096
 
 typedef enum { false, true } boolean;
@@ -29,7 +34,7 @@ typedef struct
     char* str_key;
     char* str_dst;
     char* str_dst_port;
-    u_char* key;
+    const char* key;
     int src_port;
     int dst_port;
     struct hostent *host;
@@ -40,12 +45,31 @@ typedef struct {
     struct sockaddr address;
     struct sockaddr_in sshaddr;
     int addr_len;
-    const char *key;
+    const u_char *key;
 } connection_t;
+
+typedef struct {
+    unsigned char ivec[AES_BLOCK_SIZE];
+    unsigned int num;
+    unsigned char ecount[AES_BLOCK_SIZE];
+}ctr_encrypt_t;
 
 state_t * pg_state;
 void parse_args(int argc, char **argv);
 void error_exit(){free(pg_state); exit(EXIT_FAILURE);}
+
+void
+init_ctr(ctr_encrypt_t* state, const unsigned char iv[8]) {
+    // aes_ctr128_encrypt requires 'num' and 'ecount' set to zero on the first call.
+    state->num = 0;
+    memset(state->ecount, 0, AES_BLOCK_SIZE);
+    
+    // Initialise counter in 'ivec' to 0
+    memset(state->ivec + 8, 0, 8);
+    
+    // Copy IV into 'ivec'
+    memcpy(state->ivec, iv, 8);
+}
 
 char* read_file(const char* filename) {
     char *buffer = 0;
@@ -106,8 +130,9 @@ parse_args(int argc, char **argv){
     }
     
     // 4
-    unsigned const char *key = read_file(key_file);
-     if (!key) {
+    pg_state->key = read_file(pg_state->str_key);
+    //unsigned const char *key = read_file(pg_state->str_key);
+     if (!pg_state->key) {
          fprintf(stderr, "read key file failed!\n");
          error_exit();
      }
@@ -145,7 +170,7 @@ void run_client(){
     fcntl(STDIN_FILENO, F_SETFL, O_NONBLOCK);
     fcntl(sockfd, F_SETFL, O_NONBLOCK);
     
-    //struct ctr_state state;
+    ctr_encrypt_t state;
     unsigned char iv[8];
     AES_KEY aes_key;
     
@@ -155,6 +180,7 @@ void run_client(){
     }
     long n;
     while(1) {
+        // Read from the Terminal or Standard Input
         while ((n = read(STDIN_FILENO, buffer, BUF_SIZE)) > 0) {
             if(!RAND_bytes(iv, 8)) {
                 fprintf(stderr, "Error generating random bytes.\n");
@@ -162,38 +188,18 @@ void run_client(){
             }
             char *tmp = (char*)malloc(n + 8);
             memcpy(tmp, iv, 8);
-            //write(sockfd, iv, 8);
             
             unsigned char encryption[n];
             init_ctr(&state, iv);
-            AES_ctr128_encrypt(buffer, encryption, n, &aes_key, state.ivec, state.ecount, &state.num);
+            AES_ctr128_encrypt(buffer, encryption, n, &aes_key, state.ivec, state.ecount, &(state.num));
             memcpy(tmp+8, encryption, n);
             //fprintf(stderr, "Then %d bytes encrypted message\n", n);*/
-            //write(sockfd, tmp, n + 8);
-            write(sockfd, "lalalala", 8);
-            //free(tmp);
+            write(sockfd, tmp, n + 8);
+            //write(sockfd, "lalalala", 8);
+            free(tmp);
             if (n < BUF_SIZE)
                 break;
         }
-        /*
-        while ((n = read(sockfd, buffer, BUF_SIZE)) > 0) {
-            if (n < 8) {
-                fprintf(stderr, "Packet length smaller than 8!\n");
-                close(sockfd);
-                error_exit();
-            }
-            
-            memcpy(iv, buffer, 8);
-            
-            unsigned char decryption[n-8];
-            init_ctr(&state, iv);
-            
-            AES_ctr128_encrypt(buffer+8, decryption, n-8, &aes_key, state.ivec, state.ecount, &state.num);
-            
-            write(STDOUT_FILENO, "lalalala", 8);//decryption, n-8);
-            if (n < BUF_SIZE)
-                break;
-        }*/
     }
 }
 int main(int argc, char *argv[]) {
