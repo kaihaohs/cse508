@@ -54,7 +54,7 @@ typedef struct {
     unsigned char ecount[AES_BLOCK_SIZE];
 }ctr_encrypt_t;
 
-state_t * pg_state;
+static state_t * pg_state;
 void parse_args(int argc, char **argv);
 void error_exit(){free(pg_state); exit(EXIT_FAILURE);}
 
@@ -137,39 +137,43 @@ parse_args(int argc, char **argv){
          error_exit();
      }
     if ((pg_state->host = gethostbyname(pg_state->str_dst)) == 0) {
-        fprintf(stderr, "Resovle Destination Error!\n");
+        fprintf(stderr, "No such host!\n");
         error_exit();
     }
-    //int dst_port = (int)strtol(str_dst_port, NULL, 10);
+
     pg_state->dst_port = atoi(pg_state->str_dst_port);
 }
 
-void run_client(){
-    char buffer[BUF_SIZE];
-    int sockfd;
+int run_client(){
+    int sockfd, portno;
+    struct sockaddr_in serv_addr;
+    struct hostent *server;
     
-    // 1 Init Server
-    struct sockaddr_in serv_addr, ssh_addr;
-    bzero(&serv_addr, sizeof(serv_addr));
-    bzero(&serv_addr, sizeof(ssh_addr));
-    serv_addr.sin_family = AF_INET;                 // IP
-    serv_addr.sin_port = htons(pg_state->dst_port); // Server Port
-    serv_addr.sin_addr.s_addr = ((struct in_addr *)(pg_state->host->h_addr))->s_addr;
+    char buffer[256];
     
-    // 2 Create sockfd
-    if((sockfd = socket(AF_INET, SOCK_STREAM, 0) < 0)){
-        fprintf(stderr, "Create socket error!");
+    portno = pg_state->dst_port;//2223
+    
+    // 1 Create a socket point
+    sockfd = socket(AF_INET, SOCK_STREAM, 0);
+    if (sockfd < 0) {
+        fprintf(stderr, "ERROR opening socket");
         error_exit();
     }
     
-    if (connect(sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) == -1) {
-        fprintf(stderr, "Connection failed!\n");
-        error_exit();
+    // 2 Get Host Info
+    server = pg_state->host;//gethostbyname("localhost");
+    bzero((char *) &serv_addr, sizeof(serv_addr));
+    serv_addr.sin_family = AF_INET;
+    bcopy((char *)server->h_addr, (char *)&serv_addr.sin_addr.s_addr, server->h_length);
+    serv_addr.sin_port = htons(portno);
+    
+    // => Now connect to the server
+    if (connect(sockfd, (struct sockaddr*)&serv_addr, sizeof(serv_addr)) < 0) {
+        perror("ERROR connecting");
+        exit(1);
     }
     
     fcntl(STDIN_FILENO, F_SETFL, O_NONBLOCK);
-    fcntl(sockfd, F_SETFL, O_NONBLOCK);
-    
     ctr_encrypt_t state;
     unsigned char iv[8];
     AES_KEY aes_key;
@@ -178,9 +182,9 @@ void run_client(){
         fprintf(stderr, "Set encryption key error!\n");
         error_exit();
     }
+    
     long n;
     while(1) {
-        // Read from the Terminal or Standard Input
         while ((n = read(STDIN_FILENO, buffer, BUF_SIZE)) > 0) {
             if(!RAND_bytes(iv, 8)) {
                 fprintf(stderr, "Error generating random bytes.\n");
@@ -193,7 +197,7 @@ void run_client(){
             init_ctr(&state, iv);
             AES_ctr128_encrypt(buffer, encryption, n, &aes_key, state.ivec, state.ecount, &(state.num));
             memcpy(tmp+8, encryption, n);
-            //fprintf(stderr, "Then %d bytes encrypted message\n", n);*/
+            //fprintf(stderr, "Then %d bytes encrypted message\n", n);
             write(sockfd, tmp, n + 8);
             //write(sockfd, "lalalala", 8);
             free(tmp);
@@ -201,17 +205,106 @@ void run_client(){
                 break;
         }
     }
+    
+    return 0;
 }
+
 int main(int argc, char *argv[]) {
     // 1 Parse Argument -> program state
     parse_args(argc, argv);
+    
+    fprintf(stderr, "\n\tInitializing pbproxy parameters:\n\
+            [is_server] %s\n\
+            [listen port] %d\n\
+            [key file] %s\n\
+            [destination addr] %s\n\
+            [destination port] %s\n\n"\
+            , pg_state->is_server ? "true" : "false",
+            pg_state->src_port, pg_state->str_key,\
+            pg_state->str_dst, pg_state->str_dst_port);
     
     // 2 Run Server or Client
     if(pg_state->is_server){
         //run_server();
     }else{
+        //test();//
         run_client();
     }
     
     exit(EXIT_SUCCESS);
 }
+
+/*
+void test(){
+    char buffer[BUF_SIZE];
+    int sockfd;
+    int port = 2223;
+    struct sockaddr_in serv_addr, ssh_addr;
+    
+    // 1 Create a socket point
+    if((sockfd = socket(AF_INET, SOCK_STREAM, 0) < 0)){
+        fprintf(stderr, "Create socket error!");
+        error_exit();
+    }
+    
+    // 2 Get Host Address
+    struct hostent *server;
+    server = gethostbyname("localhost");//argv[1]);
+    if (server == NULL) {
+        fprintf(stderr,"ERROR, no such host\n");
+        exit(0);
+    }
+    
+    // 3 Setting
+    bzero((char *) &serv_addr, sizeof(serv_addr));
+    //bzero(&serv_addr, sizeof(ssh_addr));
+    serv_addr.sin_family = AF_INET;                 // IP
+    //pg_state->dst_port); // Server Port
+    bcopy((char *)server->h_addr, (char *)&serv_addr.sin_addr.s_addr, server->h_length);
+    //serv_addr.sin_addr.s_addr = ((struct in_addr *)(pg_state->host->h_addr));//->s_addr;
+    serv_addr.sin_port = htons(port);
+    
+    
+    // 3 Connect to Server
+    if (connect(sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) == -1) {
+        fprintf(stderr, "Connection failed!\n");
+        error_exit();
+    }
+    
+    
+    
+    fcntl(STDIN_FILENO, F_SETFL, O_NONBLOCK);
+     fcntl(sockfd, F_SETFL, O_NONBLOCK);
+     
+     ctr_encrypt_t state;
+     unsigned char iv[8];
+     AES_KEY aes_key;
+     
+     if (AES_set_encrypt_key(pg_state->key, 128, &aes_key) < 0) {
+     fprintf(stderr, "Set encryption key error!\n");
+     error_exit();
+     }
+     long n;
+     while(1) {
+     // Read from the Terminal or Standard Input
+     while ((n = read(STDIN_FILENO, buffer, BUF_SIZE)) > 0) {
+     if(!RAND_bytes(iv, 8)) {
+     fprintf(stderr, "Error generating random bytes.\n");
+     exit(1);
+     }
+     char *tmp = (char*)malloc(n + 8);
+     memcpy(tmp, iv, 8);
+     
+     unsigned char encryption[n];
+     init_ctr(&state, iv);
+     AES_ctr128_encrypt(buffer, encryption, n, &aes_key, state.ivec, state.ecount, &(state.num));
+     memcpy(tmp+8, encryption, n);
+     //fprintf(stderr, "Then %d bytes encrypted message\n", n);
+     write(sockfd, tmp, n + 8);
+     //write(sockfd, "lalalala", 8);
+     free(tmp);
+     if (n < BUF_SIZE)
+     break;
+     }
+     }
+}*/
