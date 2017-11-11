@@ -33,6 +33,7 @@ void* server_process(void* ptr) {
     int ssh_fd, n;
     boolean ssh_done = false;
     
+    memset(buffer, '\0', sizeof(buffer));
     // 1 Connect to sshd
     ssh_fd = do_connect_sshd(conn);
     
@@ -76,8 +77,10 @@ void* server_process(void* ptr) {
                 free(conn);
                 pthread_exit(0);
             }
-            n = n - 8;
+            
             memcpy(iv, buffer, 8);
+            //n = n - 8;
+            n = strlen(buffer + 8);
             
             unsigned char* decryption = malloc(n * sizeof(u_char));
             init_ctr(&state, iv);
@@ -86,6 +89,7 @@ void* server_process(void* ptr) {
             write(ssh_fd, decryption, n);
             fprintf(stderr, "[Relay to SSHD] Message (%d bytes)\n", n);
             free(decryption);
+            memset(buffer, '\0', sizeof(buffer));
             if (n + 8 < 256)
                 break;
         };
@@ -109,6 +113,7 @@ void* server_process(void* ptr) {
                 write(conn->sock, tmp, n + 8);
                 
                 free(tmp);
+                memset(buffer, '\0', sizeof(buffer));
             }
             
             if (ssh_done == false && n == 0)
