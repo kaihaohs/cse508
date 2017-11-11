@@ -29,7 +29,7 @@ void* server_process(void* ptr) {
     debug("[-] New thread started\n");
     
     connection_t *conn = (connection_t *)ptr;
-    char buffer[BUF_SIZE];
+    unsigned char buffer[256];
     int ssh_fd, n;
     boolean ssh_done = false;
     
@@ -67,40 +67,45 @@ void* server_process(void* ptr) {
     }
     
     while (1) {
-        while ((n = read(conn->sock, buffer, BUF_SIZE)) > 0) {
+        // Read Message From Client
+        while ((n = read(conn->sock, buffer, 256)) > 0) {
             if (n < 8) {
-                printf("[Error] Packet length smaller than 8!\n");
+                printf("[Error] Incorrect Package\n");
                 close(conn->sock);
                 close(ssh_fd);
                 free(conn);
                 pthread_exit(0);
             }
-            
+            n = n - 8;
             memcpy(iv, buffer, 8);
             
-            unsigned char decryption[n-8];
+            unsigned char* decryption = malloc(n * sizeof(u_char));
             init_ctr(&state, iv);
             
-            AES_ctr128_encrypt(buffer+8, decryption, n-8, &aes_key, state.ivec, state.ecount, &(state.num));
-            write(ssh_fd, decryption, n-8);
-            if (n < BUF_SIZE)
+            AES_ctr128_encrypt(buffer + 8, decryption, n, &aes_key, state.ivec, state.ecount, &(state.num));
+            write(ssh_fd, decryption, n);
+            fprintf(stderr, "[Relay to SSHD] Message (%d bytes)\n", n);
+            free(decryption);
+            if (n + 8 < 256)
                 break;
         };
         
-        while ((n = read(ssh_fd, buffer, BUF_SIZE)) >= 0) {
+        // Read Message from SSHD
+        while ((n = read(ssh_fd, buffer, 256)) >= 0) {
             if (n > 0) {
                 if(!RAND_bytes(iv, 8)) {
-                    fprintf(stderr, "Error generating random bytes.\n");
-                    exit(1);
+                    fprintf(stderr, "[Error] Init IVs.\n");
+                    pthread_exit(0);
                 }
                 char *tmp = (char*)malloc(n + 8);
                 memcpy(tmp, iv, 8);
                 
-                unsigned char encryption[n];
+                unsigned char* encryption = malloc( n * sizeof(u_char));
                 init_ctr(&state, iv);
                 AES_ctr128_encrypt(buffer, encryption, n, &aes_key, state.ivec, state.ecount, &(state.num));
                 memcpy(tmp+8, encryption, n);
-                
+                free(encryption);
+                fprintf(stderr, "[Relay to Client] Message (%d bytes)\n", n);
                 write(conn->sock, tmp, n + 8);
                 
                 free(tmp);
@@ -109,15 +114,12 @@ void* server_process(void* ptr) {
             if (ssh_done == false && n == 0)
                 ssh_done = true;
             
-            if (n < BUF_SIZE)
-                break;
+            if (n < 256) break;
         }
-        
-        if (ssh_done)
-            break;
+        if (ssh_done)   break;
     }
     
-    printf("Closing connections and exit thread!\n");
+    printf("[-] exit thread and close connection\n");
     close(conn->sock);
     close(ssh_fd);
     free(conn);

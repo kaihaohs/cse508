@@ -28,11 +28,11 @@ parse_args(int argc, char **argv){
                 pg_state->str_key = optarg;
                 break;
             case '?':
-                fprintf(stderr, "pbproxy : Error arguments\n");
+                fprintf(stderr, "[pbproxy] Error arguments\n");
                 error_exit();
                 break;
             default:
-                fprintf(stderr, "pbproxy : Error arguments\n");
+                fprintf(stderr, "[pbproxy] Error arguments\n");
                 error_exit();
         }
     }
@@ -53,14 +53,14 @@ parse_args(int argc, char **argv){
     }
     
     // 4
-    pg_state->key = read_file(pg_state->str_key);
+    pg_state->key = read_file((char *)(pg_state->str_key));
     //unsigned const char *key = read_file(pg_state->str_key);
     if (!pg_state->key) {
-        fprintf(stderr, "read key file failed!\n");
+        fprintf(stderr, "[Error] read key file failed!\n");
         error_exit();
     }
     if ((pg_state->host = gethostbyname(pg_state->str_dst)) == 0) {
-        fprintf(stderr, "No such host!\n");
+        fprintf(stderr, "[Error] No such host!\n");
         error_exit();
     }
     

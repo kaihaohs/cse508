@@ -26,7 +26,7 @@ int do_connect(){
     }
     
     // 2 Get Host Info
-    server = pg_state->host;//gethostbyname("localhost");
+    server = pg_state->host;        //gethostbyname("localhost");
     bzero((char *) &serv_addr, sizeof(serv_addr));
     serv_addr.sin_family = AF_INET;
     bcopy((char *)server->h_addr, (char *)&serv_addr.sin_addr.s_addr, server->h_length);
@@ -44,18 +44,16 @@ int do_connect(){
 }
 
 int run_client(){
-    int sockfd;
-    char buffer[256];
-    
+    unsigned char buffer[256];
     // 1 Connect the Server
-    sockfd = do_connect();
+    int sockfd = do_connect();
     
     fcntl(STDIN_FILENO, F_SETFL, O_NONBLOCK);
     fcntl(sockfd, F_SETFL, O_NONBLOCK);
     
     // 2 Init Encryption
     ctr_encrypt_t state;
-    unsigned char iv[8];
+    unsigned char iv[IV_SIZE];
     AES_KEY aes_key;
     
     if (AES_set_encrypt_key(pg_state->key, 128, &aes_key) < 0) {
@@ -66,46 +64,49 @@ int run_client(){
     unsigned long n;
     int num;
     while(1) {
+        // Read Message from terminal
         while((num = read(STDIN_FILENO, buffer, 256) > 0)){
-            if(!RAND_bytes(iv, 8)) {
+            if(!RAND_bytes(iv, IV_SIZE)) {
                 fprintf(stderr, "[Error] Generate random IV!\n");
                 error_exit();
             }
-            n = strlen(buffer);
-            char *tmp = (char*)malloc(n + 8);
-            memcpy(tmp, iv, 8);
+            n = strlen((char *)buffer);
+            char *tmp = (char*) malloc(n + IV_SIZE);
+            memcpy(tmp, iv, IV_SIZE);
             
             // Encrypt Read Info
             unsigned char * encryption = malloc(n * sizeof(u_char));
             init_ctr(&state, iv);
             AES_ctr128_encrypt(buffer, encryption, n, &aes_key, state.ivec, state.ecount, &(state.num));
-            memcpy(tmp + 8, encryption, n);
+            memcpy(tmp + IV_SIZE, encryption, n);
             free(encryption);
             
             // Write to socket handler
-            fprintf(stderr, "Sent %lu bytes encrypted message!\n", n);
-            write(sockfd, tmp, n + 8);
+            write(sockfd, tmp, n + IV_SIZE);
+            fprintf(stderr, "[Send] Message (%lu bytes)\n", n);
             free(tmp);
+            if (n < 256) break;
         }
         
+        // Read Message from socket
         while ((num = read(sockfd, buffer, 256)) > 0) {
-            printf("%d\n",num);
             if (num < 8) {
-                fprintf(stderr, "[Error] Packet length is too short!\n");
+                fprintf(stderr, "[Error] Missing IV info!\n");
                 close(sockfd);
                 error_exit();
             }
             n = num - 8;
             memcpy(iv, buffer, 8);
             
-            unsigned char decryption[num];
+            unsigned char* decryption = malloc(num * sizeof(unsigned char));
             init_ctr(&state, iv);
             
-            AES_ctr128_encrypt(buffer+8, decryption, n, &aes_key, state.ivec, state.ecount, &(state.num));
+            AES_ctr128_encrypt(buffer + 8, decryption, n, &aes_key, state.ivec, state.ecount, &(state.num));
             
+            fprintf(stderr, "[Rev] Message (%lu bytes)\n", n);
             write(STDOUT_FILENO, decryption, n);
-            if (num < 256)
-                break;
+            free(decryption);
+            if (num < 256) break;
         }
     }
     return 0;

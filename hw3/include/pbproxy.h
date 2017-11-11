@@ -45,6 +45,7 @@ typedef struct
 } state_t;
 
 #define BUF_SIZE 4096
+#define IV_SIZE     8
 
 typedef struct {
     int sock;
