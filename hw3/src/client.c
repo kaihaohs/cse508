@@ -45,6 +45,7 @@ int do_connect(){
 
 int run_client(){
     unsigned char buffer[256];
+    memset(buffer, '\0', sizeof(buffer));
     // 1 Connect the Server
     int sockfd = do_connect();
     
@@ -85,6 +86,7 @@ int run_client(){
             write(sockfd, tmp, n + IV_SIZE);
             fprintf(stderr, "[Send] Message (%lu bytes)\n", n);
             free(tmp);
+            memset(buffer, '\0', sizeof(buffer));
             if (n < 256) break;
         }
         
@@ -106,6 +108,7 @@ int run_client(){
             fprintf(stderr, "[Rev] Message (%lu bytes)\n", n);
             write(STDOUT_FILENO, decryption, n);
             free(decryption);
+            memset(buffer, '\0', sizeof(buffer));
             if (num < 256) break;
         }
     }
