@@ -1,0 +1,84 @@
+CSE508: Network Security, Fall 2017
+
+Homework 3: Plugboard Proxy
+
+Name : Kaihao Li	kalli@cs.stonybrook.edu
+ID   : 111324675
+-------------------------------------------------------------------------------
+[Make]
+1. Linking libraries
+> sudo apt-get install openssl libssl-dev
+(Mac 	> brew install openssl 
+	> cd /usr/local/include
+	> ln -s ../opt/openssl/include/openssl .
+)
+
+2. Compilation
+> make 
+
+mkdir -p bin build
+gcc -I include -c -o build/args.o src/args.c
+gcc -I include -c -o build/client.o src/client.c
+gcc -I include -c -o build/pbproxy.o src/pbproxy.c
+gcc -I include -c -o build/server.o src/server.c
+gcc  build/args.o build/client.o build/pbproxy.o build/server.o -o bin/pbproxy -lcrypto -lpthread
+
+-------------------------------------------------------------------------------
+[Usage]
+
+> bin/pbproxy [-l port] -k rsrc/key destination port
+
+  -l  Reverse-proxy mode: listen for inbound connections on <port> and relay
+      them to <destination>:<port>
+
+  -k  Use the symmetric key contained in <keyfile> (as a hexadecimal string)
+
+-------------------------------------------------------------------------------
+
+In this assignment, I separated it to four main parts.
+(1) parsing arguments (args.c) 
+Parse arguments and save arguments info to struct state_t.
+(2) client (client.c)
+(3) server (server.c) 
+(4) encryption (encrypt.c)
+-------------------------------------------------------------------------------
+[Example1] terminal <-> client <-> server <-> ns
+
+Terminal 1
+”sshd”: > ns -l -p 1111
+Terminal 2
+server: > bin/pbproxy -k rsrc/key -l 2222 localhost 1111
+Terminal 3
+client: > bin/pbproxy -k rsrc/key localhost 2222
+
+When you type in messages in the terminal1, teminal3 will receive that message.
+When you type in messages in the terminal3, teminal1 will receive that message.
+
+[Example2] ssh <-> client <-> server <-> sshd
+
+Terminal 1
+Server:	> bin/pbproxy -k rsrc/key -l 2226 127.0.0.1 22
+Terminal 2
+Client: > ssh -o "ProxyCommand bin/pbproxy -k rsrc/key 127.0.0.1 2226" localhost
+
+[Example3] different key
+
+When we used wrong key file, the massage won’t send to the sshd.
+Client: > ssh -o "ProxyCommand bin/pbproxy -k rsrc/testkey 127.0.0.1 2226" localhost
+
+[Example4] Multiplexing Port(Using Process)
+
+Terminal 1
+Server:	> bin/pbproxy -k rsrc/key -l 2226 localhost 22
+Terminal 2
+Client: > ssh -o "ProxyCommand bin/pbproxy -k rsrc/key 127.0.0.1 2226" localhost
+Terminal 3
+Client: > ssh -o "ProxyCommand bin/pbproxy -k rsrc/key 127.0.0.1 2226" localhost
+
+Terminal 1 Output:
+INFO: [Thread 5 ] Start!
+INFO: [Thread 5 ] Exit!
+INFO: [Thread 6 ] Start!
+INFO: [Thread 7 ] Start!
+INFO: [Thread 7 ] Exit!
+INFO: [Thread 6 ] Exit!

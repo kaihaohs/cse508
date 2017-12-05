@@ -14,9 +14,9 @@ EXEC := pbproxy
 
 .PHONY: all debug clean setup
 
-CFLAGS := -Wall -Werror -DCOLOR
+CFLAGS := -DCOLOR
 DFLAGS := -g -DDEBUG 
-
+#-Wall -Werror
 all: setup $(EXEC) 
 
 debug: CFLAGS += -g -DDEBUG
@@ -26,12 +26,12 @@ setup:
 	mkdir -p bin build
 
 $(BLDD)/%.o: $(SRCD)/%.c
-	$(CC) $(INC) -c -o $@ $<
+	$(CC) $(CFLAGS) $(INC) -c -o $@ $<
 
 $(EXEC): $(ALL_OBJF)
-	$(CC)  $^ -o $(BIND)/$@ $(LIBS)
+	$(CC) $(CFLAGS) $^ -o $(BIND)/$@ $(LIBS)
 
-#$(CFLAGS)  $(CFLAGS)
+# 
 
 clean: 
 	rm -rf $(BLDD) $(BIND)
